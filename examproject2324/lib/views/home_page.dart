@@ -17,16 +17,31 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _Items = [];
   bool _isLoading = false;
 
-  int _selectedIndex = 0;
-  final List<Widget> _widgetOptions = <Widget>[
-    HomePage(),
-    OtherView(),
-  ];
+  late PageController _pageController;
+  late Future<List<Photo>> _photos;
 
+  final player = AudioPlayer();
+  late Source audioUrl;
+
+  int currentIndex = 0;
   void _onItemTapped(int index) {
     setState(() {
-      _selectedIndex = index;
+      currentIndex = index;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshItems();
+    _photos = fetchPhotos();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -34,87 +49,57 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(title: const Text('L\' app des Musicos')),
-      body: _isLoading
-          ? const Center(
-        child: CircularProgressIndicator(),
-      )
-          : ListView.builder(
-        itemCount: _Items.length,
-        itemBuilder: (context, index) => Card(
-            margin: const EdgeInsets.all(15),
-            child: ListTile(
-              onTap: () async {
-                var url =
-                    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-                var response = await http.get(Uri.parse(url));
-                if (response.statusCode == 200) {
-                  AudioPlayer audioPlayer = AudioPlayer();
-                  await audioPlayer.play(UrlSource(url));
-                } else {
-                  print(
-                      'Request failed with status: ${response.statusCode}.');
+      body: SizedBox.expand(
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              currentIndex = index;
+            });
+          },
+          children: [
+            FutureBuilder<List<Photo>>(
+              future: _photos,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return ListView.builder(
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        title: Image.network('http://192.168.1.21:8080/photos/${snapshot.data![index].path}'),
+                        onTap: () {
+                          audioUrl = UrlSource('http://192.168.1.21:8080/songs/${snapshot.data![index].song!.path}');
+                          player.play(audioUrl);
+                        },
+                      );
+                    },
+                  );
+                } else if (snapshot.hasError) {
+                  return const Center(
+                    child: Text('Erreur lors du chargement des photos'),
+                  );
                 }
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
               },
-              title: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Text(
-                  _Items[index]['title'],
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Text(
-                  _Items[index]['description'],
-                  style: const TextStyle(
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                      onPressed: () {
-                        showBottomSheet(_Items[index]['id']);
-                      },
-                      icon: const Icon(
-                        Icons.edit,
-                        color: Colors.blue,
-                      )),
-                  IconButton(
-                    onPressed: () => _deleteItem(_Items[index]['id']),
-                    icon: const Icon(
-                      Icons.delete,
-                      color: Colors.red,
-                    ),
-                  ),
-                ],
-              ),
-            )
+            ),
+            Container(color: Colors.blue,),
+          ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showBottomSheet(null),
-        child: const Icon(Icons.add),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Accueil',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.business),
-            label: 'Autre Vue',
-          ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: (int index) {
+          setState(() {
+            currentIndex = index;
+            _pageController.animateToPage(index, duration: const Duration(milliseconds: 500), curve: Curves.ease);
+          });
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Profil'),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.amber[800],
-        onTap: _onItemTapped,
       ),
     );
   }
@@ -127,15 +112,6 @@ class _HomePageState extends State<HomePage> {
       _isLoading = false;
     });
   }
-
-  late Future<List<Photo>> _photos;
-  @override
-  void initState() {
-    super.initState();
-    _refreshItems();
-    _photos = fetchPhotos();
-  }
-
 
   Future<List<Photo>> fetchPhotos() async {
     final response = await http.get(Uri.parse('http://192.168.1.21:8080/photo/all'));
