@@ -34,73 +34,68 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(title: const Text('L\' app des Musicos')),
-      body: Stack(
-        children: [
-          _widgetOptions.elementAt(_selectedIndex),
-          _isLoading
-              ? const Center(
-            child: CircularProgressIndicator(),
-          )
-              : ListView.builder(
-            itemCount: _Items.length,
-            itemBuilder: (context, index) => Card(
-                margin: const EdgeInsets.all(15),
-                child: ListTile(
-                  onTap: () async {
-                    var url =
-                        'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-                    var response = await http.get(Uri.parse(url));
-                    if (response.statusCode == 200) {
-                      AudioPlayer audioPlayer = AudioPlayer();
-                      await audioPlayer.play(UrlSource(url));
-                    } else {
-                      print(
-                          'Request failed with status: ${response.statusCode}.');
-                    }
-                  },
-                  title: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Text(
-                      _Items[index]['title'],
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+      body: _isLoading
+          ? const Center(
+        child: CircularProgressIndicator(),
+      )
+          : ListView.builder(
+        itemCount: _Items.length,
+        itemBuilder: (context, index) => Card(
+            margin: const EdgeInsets.all(15),
+            child: ListTile(
+              onTap: () async {
+                var url =
+                    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+                var response = await http.get(Uri.parse(url));
+                if (response.statusCode == 200) {
+                  AudioPlayer audioPlayer = AudioPlayer();
+                  await audioPlayer.play(UrlSource(url));
+                } else {
+                  print(
+                      'Request failed with status: ${response.statusCode}.');
+                }
+              },
+              title: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Text(
+                  _Items[index]['title'],
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Text(
+                  _Items[index]['description'],
+                  style: const TextStyle(
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                      onPressed: () {
+                        showBottomSheet(_Items[index]['id']);
+                      },
+                      icon: const Icon(
+                        Icons.edit,
+                        color: Colors.blue,
+                      )),
+                  IconButton(
+                    onPressed: () => _deleteItem(_Items[index]['id']),
+                    icon: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
                     ),
                   ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Text(
-                      _Items[index]['description'],
-                      style: const TextStyle(
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                          onPressed: () {
-                            showBottomSheet(_Items[index]['id']);
-                          },
-                          icon: const Icon(
-                            Icons.edit,
-                            color: Colors.blue,
-                          )),
-                      IconButton(
-                        onPressed: () => _deleteItem(_Items[index]['id']),
-                        icon: const Icon(
-                          Icons.delete,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-            ),
-          ),
-        ],
+                ],
+              ),
+            )
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showBottomSheet(null),
