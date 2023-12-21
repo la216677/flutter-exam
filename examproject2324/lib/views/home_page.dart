@@ -94,11 +94,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> deletePhoto(String path) async {
-    var uri = Uri.parse('http://192.168.1.21:8080/photo/$path');
-    var response = await http.delete(uri);
+    // get photo to delete song
+    var uri2 = Uri.parse('http://192.168.1.21:8080/photo/$path');
+    var response2 = await http.get(uri2);
+    var photo = json.decode(response2.body);
+    var idSong = photo['song']['id'];
 
-    if (response.statusCode == 200) {
+    var uri3 = Uri.parse('http://192.168.1.21:8080/photo/$path');
+    var response3 = await http.delete(uri3);
+
+    if (response3.statusCode == 200) {
       print('Photo supprimée avec succès');
+
+      // delete song
+      var uri4 = Uri.parse('http://192.168.1.21:8080/song/id/$idSong');
+      var response4 = await http.delete(uri4);
+
+      if (response4.statusCode == 200) {
+        print('Song supprimée avec succès');
+      } else {
+        print('Échec de la suppression de la song');
+      }
     } else {
       print('Échec de la suppression de la photo');
     }
@@ -136,9 +152,14 @@ class _HomePageState extends State<HomePage> {
 
     var uploadResponse = await request.send();
 
+
     if (uploadResponse.statusCode == 200) {
-      print('Upload réussi');
       final respStr = await uploadResponse.stream.bytesToString();
+      if(respStr == "") {
+        print('No song  because it exists');
+        return;
+      }
+      print('Upload réussi');
       // Obtenez l'objet Song à partir de la réponse
       var uri2 = Uri.parse('http://192.168.1.21:8080/song/$respStr');
       var response = await http.get(uri2);
@@ -355,7 +376,7 @@ class _HomePageState extends State<HomePage> {
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profil'),
+          NavigationDestination(icon: Icon(Icons.list), label: 'Édition'),
         ],
       ),
     );
