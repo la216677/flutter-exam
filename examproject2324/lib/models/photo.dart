@@ -1,9 +1,9 @@
 import 'song.dart';
 
 class Photo {
-  final int id;
-  final String path;
-  final Song? song;
+  int id;
+  String path;
+  Song? song;
 
   Photo({required this.id, required this.path, this.song});
 
@@ -14,4 +14,22 @@ class Photo {
       song: json['song'] != null ? Song.fromJson(json['song']) : null,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'path': path,
+      'song': song?.toJson(),
+    };
+  }
+
+  // Getters
+  int get getId => id;
+  String get getPath => path;
+  Song? get getSong => song;
+
+  // Setters
+  set setId(int id) => this.id = id;
+  set setPath(String path) => this.path = path;
+  set setSong(Song? song) => this.song = song;
 }

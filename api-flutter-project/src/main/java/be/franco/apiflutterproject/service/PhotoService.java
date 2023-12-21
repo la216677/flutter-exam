@@ -39,6 +39,10 @@ public class PhotoService {
         return photoRepository.findByPath(path);
     }
 
+    public Photo getPhotoById(Long id) {
+        return photoRepository.findById(id).get();
+    }
+
     public Photo[] getAllPhotos() {
         return photoRepository.findAll().toArray(new Photo[0]);
     }
@@ -50,5 +54,7 @@ public class PhotoService {
         photoRepository.delete(photo);
     }
 
-
+    public Photo updatePhoto(Photo photo) {
+        return photoRepository.save(photo);
+    }
 }

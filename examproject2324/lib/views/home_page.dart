@@ -4,11 +4,17 @@ import 'package:examproject2324/views/otherView.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/photo.dart';
+import '../models/song.dart';
 import '../utils/db_helper.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:permission_handler/permission_handler.dart';
+
+
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,10 +34,11 @@ class _HomePageState extends State<HomePage> {
   late Source audioUrl;
 
   File? _image;
+  File? _song;
 
   Future getImage() async {
     final pickedFile =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
+    await ImagePicker().pickImage(source: ImageSource.gallery);
 
     setState(() {
       if (pickedFile != null) {
@@ -43,7 +50,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future uploadImage() async {
-    var uri = Uri.parse('http://http://192.168.1.21:8080/photo/upload');
+    var uri = Uri.parse('http://192.168.1.21:8080/photo/upload');
     var request = http.MultipartRequest('POST', uri);
 
     var multipartFile = await http.MultipartFile.fromPath(
@@ -86,6 +93,90 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  Future<void> deletePhoto(String path) async {
+    var uri = Uri.parse('http://192.168.1.21:8080/photo/$path');
+    var response = await http.delete(uri);
+
+    if (response.statusCode == 200) {
+      print('Photo supprimée avec succès');
+    } else {
+      print('Échec de la suppression de la photo');
+    }
+  }
+
+  Future<void> getSong() async {
+    var status = await Permission.storage.status;
+    if (!status.isGranted) {
+      status = await Permission.storage.request();
+    }
+    if (status.isGranted) {
+      final pickedFile = await FilePicker.platform.pickFiles(type: FileType.audio);
+
+      if (pickedFile != null) {
+        _song = File(pickedFile.files.single.path!);
+      } else {
+        print('No song selected.');
+      }
+    } else {
+      print('Storage permission is denied');
+    }
+  }
+
+  Future<void> uploadSong(String photoId) async {
+    var uri = Uri.parse('http://192.168.1.21:8080/song/upload');
+    var request = http.MultipartRequest('POST', uri);
+
+    var multipartFile = await http.MultipartFile.fromPath(
+      'file',
+      _song!.path,
+      contentType: MediaType('audio', 'mpeg'), // Changez le type en fonction de votre fichier
+    );
+
+    request.files.add(multipartFile);
+
+    var uploadResponse = await request.send();
+
+    if (uploadResponse.statusCode == 200) {
+      print('Upload réussi');
+      final respStr = await uploadResponse.stream.bytesToString();
+      // Obtenez l'objet Song à partir de la réponse
+      var uri2 = Uri.parse('http://192.168.1.21:8080/song/$respStr');
+      var response = await http.get(uri2);
+      var song = json.decode(response.body);
+
+      final songId = song['id']; // Utilisez l'ID de la chanson ici
+
+      // get photo to update and update
+      var uri4 = Uri.parse('http://192.168.1.21:8080/photo/id/$photoId');
+      var response2 = await http.get(uri4);
+      var photo = json.decode(response2.body);
+
+      var uri3 = Uri.parse('http://192.168.1.21:8080/photo/update');
+
+      Photo photoToUpdate = Photo.fromJson(photo);
+      photoToUpdate.setSong = Song(id: songId, path: respStr);
+
+      var response3 = await http.put(
+        uri3,
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(photoToUpdate.toJson()),
+      );
+
+      if (response3.statusCode == 200) {
+        print('Song updated successfully');
+      } else {
+        print('Failed to update song');
+      }
+    } else {
+      print('Échec de l\'upload');
+    }
+  }
+
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,7 +204,8 @@ class _HomePageState extends State<HomePage> {
                         child: InkWell(
                           onTap: () {
                             audioUrl = UrlSource(
-                                'http://192.168.1.21:8080/songs/${snapshot.data![index].song!.path}');
+                                'http://192.168.1.21:8080/songs/${snapshot
+                                    .data![index].song!.path}');
                             player.play(audioUrl);
                             print('Card clicked');
                           },
@@ -126,7 +218,7 @@ class _HomePageState extends State<HomePage> {
                               maxHeight: 300,
                               // Vous pouvez ajuster la valeur pour obtenir la hauteur maximale souhaitée
                               maxWidth:
-                                  400, // Vous pouvez ajuster la valeur pour obtenir la largeur maximale souhaitée
+                              400, // Vous pouvez ajuster la valeur pour obtenir la largeur maximale souhaitée
                             ),
                             child: Card(
                               shape: RoundedRectangleBorder(
@@ -141,7 +233,8 @@ class _HomePageState extends State<HomePage> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: <Widget>[
                                     Image.network(
-                                      'http://192.168.1.21:8080/photos/${snapshot.data![index].path}',
+                                      'http://192.168.1.21:8080/photos/${snapshot
+                                          .data![index].path}',
                                       height: 200,
                                       width: 200,
                                     ),
@@ -165,69 +258,89 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             // formulaire pour ajouter un instrument
-            Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _Items.length,
-                    itemBuilder: (context, index) {
-                      return Card(
-                        elevation: 5,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        child: ListTile(
-                          leading: const Icon(Icons.music_note),
-                          title: Text(_Items[index]['title']),
-                          subtitle: Text(_Items[index]['description']),
-                          trailing: SizedBox(
-                            width: 100,
+        FutureBuilder<List<Photo>>(
+          future: _photos,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return Column(
+                children: <Widget>[
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.all(30),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.blueAccent),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.5),
+                                  spreadRadius: 5,
+                                  blurRadius: 7,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
                             child: Row(
-                              children: [
+                              children: <Widget>[
+                                Image.network(
+                                  'http://192.168.1.21:8080/photos/${snapshot.data![index].path}',
+                                  height: 100,
+                                  width: 100,
+                                ),
+                                Spacer(),
                                 IconButton(
-                                  onPressed: () {
-                                    showBottomSheet(_Items[index]['id']);
+                                  icon: Icon(Icons.delete),
+                                  onPressed: () async {
+                                    await deletePhoto(snapshot.data![index].path);
+                                    setState(() {
+                                      _photos = fetchPhotos(); // Mettez à jour la liste des photos
+                                    });
                                   },
-                                  icon: const Icon(Icons.edit),
                                 ),
                                 IconButton(
-                                  onPressed: () {
-                                    _deleteItem(_Items[index]['id']);
+                                  icon: Icon(Icons.music_note),
+                                  onPressed: () async {
+                                    await getSong();
+                                    await uploadSong(snapshot.data![index].id.toString()); // Passez l'ID de la photo ici
+                                    setState(() {
+                                      _photos = fetchPhotos(); // Mettez à jour la liste des photos
+                                    });
                                   },
-                                  icon: const Icon(Icons.delete),
                                 ),
                               ],
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                if (_isLoading)
-                  const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.all(15),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      showBottomSheet(null);
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(18),
-                      // Ajout logo add
-                      child: Icon(
-                        Icons.add,
-                        size: 30,
-                      ),
+                        );
+                      },
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  Padding(
+                    padding: const EdgeInsets.all(30),
+                    child: FloatingActionButton(
+                      onPressed: () async {
+                        await getImage();
+                        await uploadImage();
+                        setState(() {
+                          _photos = fetchPhotos(); // Mettez à jour la liste des photos
+                        });
+                      },
+                      tooltip: 'Pick Image',
+                      child: Icon(Icons.add_a_photo),
+                    ),
+                  ),
+                ],
+              );
+            } else if (snapshot.hasError) {
+              return Text("${snapshot.error}");
+            }
+            return const CircularProgressIndicator();
+          },
+        )
+        ],
         ),
       ),
       bottomNavigationBar: NavigationBar(
@@ -258,7 +371,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<List<Photo>> fetchPhotos() async {
     final response =
-        await http.get(Uri.parse('http://192.168.1.21:8080/photo/all'));
+    await http.get(Uri.parse('http://192.168.1.21:8080/photo/all'));
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
       return jsonResponse.map((photo) => Photo.fromJson(photo)).toList();
@@ -299,22 +412,6 @@ class _HomePageState extends State<HomePage> {
     _refreshItems();
   }
 
-  Future<List<String>> fetchImages() async {
-    final response = await http.get(Uri.parse('https://picsum.photos/v2/list'));
-
-    if (response.statusCode == 200) {
-      List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((data) => data['url'].toString()).toList();
-    } else {
-      throw Exception('Erreur lors du chargement des images');
-    }
-  }
-
-  void playMusic(String url) async {
-    AudioPlayer audioPlayer = AudioPlayer();
-    await audioPlayer.play(UrlSource(url));
-  }
-
   void showBottomSheet(int? id) {
     if (id != null) {
       final existingItem = _Items.firstWhere((element) => element['id'] == id);
@@ -326,75 +423,71 @@ class _HomePageState extends State<HomePage> {
       elevation: 5,
       isScrollControlled: true,
       context: context,
-      builder: (_) => Container(
-        padding: EdgeInsets.only(
-          top: 30,
-          left: 15,
-          right: 15,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 50,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-                hintText: 'Enter title',
-              ),
+      builder: (_) =>
+          Container(
+            padding: EdgeInsets.only(
+              top: 30,
+              left: 15,
+              right: 15,
+              bottom: MediaQuery
+                  .of(context)
+                  .viewInsets
+                  .bottom + 50,
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-                hintText: 'Enter description',
-              ),
-            ),
-            const SizedBox(height: 10),
-            Center(
-              child: _image == null
-                  ? Text('No image selected.')
-                  : Image.file(_image!),
-            ),
-            FloatingActionButton(
-              onPressed: getImage,
-              tooltip: 'Pick Image',
-              child: Icon(Icons.add_a_photo),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (id == null) {
-                    await _addNewItem();
-                  } else {
-                    await _updateItem(id);
-                  }
-                  _titleController.clear();
-                  _descriptionController.clear();
-
-                  Navigator.of(context).pop();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Text(
-                    id == null ? 'Add' : 'Update',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(),
+                    hintText: 'Enter title',
                   ),
                 ),
-              ),
-            )
-          ],
-        ),
-      ),
+                const SizedBox(height: 10),
+                Center(
+                  child: _image == null
+                      ? Text('No image selected.')
+                      : Image.file(_image!, height: 200, width: 200),
+                ),
+                FloatingActionButton(
+                  onPressed: getImage,
+                  tooltip: 'Pick Image',
+                  child: Icon(Icons.add_a_photo),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (_image != null) {
+                        await uploadImage();
+                      }
+                      if (id == null) {
+                        await _addNewItem();
+                      } else {
+                        await _updateItem(id);
+                      }
+                      _titleController.clear();
+                      _descriptionController.clear();
+                      Navigator.of(context).pop();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Text(
+                        id == null ? 'Add' : 'Update',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              ],
+            ),
+          ),
     );
   }
 }

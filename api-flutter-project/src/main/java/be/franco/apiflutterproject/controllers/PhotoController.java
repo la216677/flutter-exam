@@ -36,4 +36,14 @@ public class PhotoController {
     public void deletePhoto(@PathVariable("path") String path) {
         photoService.deletePhoto(path);
     }
+
+    @GetMapping("/id/{id}")
+    public Photo getPhotoById(@PathVariable("id") Long id) {
+        return photoService.getPhotoById(id);
+    }
+    @PutMapping("/update")
+    public Photo updatePhoto(@RequestBody Photo photo) {
+        return photoService.updatePhoto(photo);
+    }
+
 }

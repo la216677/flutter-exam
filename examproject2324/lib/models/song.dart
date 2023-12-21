@@ -1,6 +1,6 @@
 class Song {
-  final int id;
-  final String path;
+  int id;
+  String path;
 
   Song({required this.id, required this.path});
 
@@ -10,4 +10,19 @@ class Song {
       path: json['path'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'path': path,
+    };
+  }
+
+  // Getters
+  int get getId => id;
+  String get getPath => path;
+
+  // Setters
+  set setId(int id) => this.id = id;
+  set setPath(String path) => this.path = path;
 }
