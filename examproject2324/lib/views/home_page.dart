@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -40,18 +41,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future uploadImage() async {
-    var uri = Uri.parse('http://192.168.1.21:8080/photo/upload');
+    var uri = Uri.parse('http://192.168.0.16:8080/image');
     var request = http.MultipartRequest('POST', uri);
 
     var multipartFile = await http.MultipartFile.fromPath(
-      'file',
+      'image',
       _image!.path,
       contentType: MediaType(
           'image', 'jpeg'), // Changez le type en fonction de votre fichier
     );
-
     request.files.add(multipartFile);
-
     var response = await request.send();
 
     if (response.statusCode == 200) {
@@ -59,6 +58,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   int currentIndex = 0;
+  Future<List<Photo>> fetchPhotos() async {
+    List<Photo> photos = [];
+    final response =
+    await http.get(Uri.parse('http://192.168.0.16:8080/image/search/all'));
+    if (response.statusCode == 200) {
+      var photosJson = json.decode(response.body);
+      for (var photoJson in photosJson) {
+        // get image with id
+        final response2 = await http.get(Uri.parse('http://192.168.0.16:8080/image/search/${photoJson['id']}'));
+
+        Uint8List imageData = response2.bodyBytes;
+        photos.add(Photo.fromJson(photoJson, imageData: imageData));
+      }
+      return photos;
+    } else {
+      throw Exception('Erreur lors du chargement des photos');
+    }
+  }
+
+
 
   @override
   void initState() {
@@ -74,23 +93,11 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<void> deletePhoto(String path) async {
-    // get photo to delete song
-    var uri2 = Uri.parse('http://192.168.1.21:8080/photo/$path');
-    var response2 = await http.get(uri2);
-    var photo = json.decode(response2.body);
-    var idSong = photo['song']['id'];
-
-    var uri3 = Uri.parse('http://192.168.1.21:8080/photo/$path');
+  Future<void> deletePhoto(int id) async {
+    var uri3 = Uri.parse('http://192.168.0.16:8080/image/delete/$id');
     var response3 = await http.delete(uri3);
 
     if (response3.statusCode == 200) {
-      // delete song
-      var uri4 = Uri.parse('http://192.168.1.21:8080/song/id/$idSong');
-      var response4 = await http.delete(uri4);
-
-      if (response4.statusCode == 200) {
-      } else {}
     } else {}
   }
 
@@ -109,8 +116,8 @@ class _HomePageState extends State<HomePage> {
     } else {}
   }
 
-  Future<void> uploadSong(String photoId) async {
-    var uri = Uri.parse('http://192.168.1.21:8080/song/upload');
+  Future<void> uploadSong(int photoId) async {
+    var uri = Uri.parse('http://192.168.0.16:8080/storageSong/uploadSong');
     var request = http.MultipartRequest('POST', uri);
 
     var multipartFile = await http.MultipartFile.fromPath(
@@ -129,32 +136,12 @@ class _HomePageState extends State<HomePage> {
       if (respStr == "") {
         return;
       }
-      // Obtenez l'objet Song à partir de la réponse
-      var uri2 = Uri.parse('http://192.168.1.21:8080/song/$respStr');
-      var response = await http.get(uri2);
-      var song = json.decode(response.body);
 
-      final songId = song['id']; // Utilisez l'ID de la chanson ici
+      // associate song with photo
+      var uri2 = Uri.parse('http://192.168.0.16:8080/storageSong/associateSongWithPhoto/$respStr/$photoId');
+      var response2 = await http.post(uri2);
 
-      // get photo to update and update
-      var uri4 = Uri.parse('http://192.168.1.21:8080/photo/id/$photoId');
-      var response2 = await http.get(uri4);
-      var photo = json.decode(response2.body);
-
-      var uri3 = Uri.parse('http://192.168.1.21:8080/photo/update');
-
-      Photo photoToUpdate = Photo.fromJson(photo);
-      photoToUpdate.setSong = Song(id: songId, path: respStr);
-
-      var response3 = await http.put(
-        uri3,
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(photoToUpdate.toJson()),
-      );
-
-      if (response3.statusCode == 200) {
+      if (response2.statusCode == 200) {
       } else {}
     } else {}
   }
@@ -185,9 +172,11 @@ class _HomePageState extends State<HomePage> {
                         // Vous pouvez ajuster la valeur pour obtenir la marge souhaitée
                         child: InkWell(
                           onTap: () {
-                            audioUrl = UrlSource(
-                                'http://192.168.1.21:8080/songs/${snapshot.data![index].song!.path}');
-                            player.play(audioUrl);
+                            if (snapshot.data![index].getSong != null) {
+                              audioUrl = UrlSource(
+                                'http://192.168.0.16:8080/storageSong/downloadSong/${snapshot.data![index].getSong!.getName}');
+                              player.play(audioUrl);
+                            }
                           },
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(
@@ -212,11 +201,7 @@ class _HomePageState extends State<HomePage> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: <Widget>[
-                                    Image.network(
-                                      'http://192.168.1.21:8080/photos/${snapshot.data![index].path}',
-                                      height: 200,
-                                      width: 200,
-                                    ),
+                                    Image(image: MemoryImage(snapshot.data![index].getImageData), height: 200, width: 200),
                                   ],
                                 ),
                               ),
@@ -265,17 +250,12 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 child: Row(
                                   children: <Widget>[
-                                    Image.network(
-                                      'http://192.168.1.21:8080/photos/${snapshot.data![index].path}',
-                                      height: 100,
-                                      width: 100,
-                                    ),
+                                    Image(image: MemoryImage(snapshot.data![index].getImageData), height: 100, width: 100),
                                     const Spacer(),
                                     IconButton(
                                       icon: const Icon(Icons.delete),
                                       onPressed: () async {
-                                        await deletePhoto(
-                                            snapshot.data![index].path);
+                                        await deletePhoto(snapshot.data![index].getId);// Passez l'ID de la photo ici
                                         setState(() {
                                           _photos =
                                               fetchPhotos(); // Mettez à jour la liste des photos
@@ -287,8 +267,7 @@ class _HomePageState extends State<HomePage> {
                                       onPressed: () async {
                                         await getSong();
                                         await uploadSong(snapshot
-                                            .data![index].id
-                                            .toString()); // Passez l'ID de la photo ici
+                                            .data![index].getId); // Passez l'ID de la photo ici
                                         setState(() {
                                           _photos =
                                               fetchPhotos(); // Mettez à jour la liste des photos
@@ -324,7 +303,8 @@ class _HomePageState extends State<HomePage> {
                 }
                 return const CircularProgressIndicator();
               },
-            )
+            ),
+
           ],
         ),
       ),
@@ -350,14 +330,6 @@ class _HomePageState extends State<HomePage> {
     setState(() {});
   }
 
-  Future<List<Photo>> fetchPhotos() async {
-    final response =
-        await http.get(Uri.parse('http://192.168.1.21:8080/photo/all'));
-    if (response.statusCode == 200) {
-      List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((photo) => Photo.fromJson(photo)).toList();
-    } else {
-      throw Exception('Erreur lors du chargement des photos');
-    }
-  }
 }
+
+

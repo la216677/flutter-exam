@@ -1,25 +1,32 @@
 package be.franco.apiflutterproject.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
-@Getter
-@Setter
+@Table(name = "Song")
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class Song {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String path;
+    private String name;
+
+    private String type;
+
+    @Lob
+    @Column(name = "song",length = 1000000)
+    private byte[] songData;
 
     @OneToOne(mappedBy = "song")
-    @JsonIgnore
+    @JsonBackReference  // Modifiez cette ligne
     private Photo photo;
 }

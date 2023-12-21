@@ -1,67 +1,65 @@
 package be.franco.apiflutterproject.service;
 
+import be.franco.apiflutterproject.entity.Photo;
 import be.franco.apiflutterproject.entity.Song;
+import be.franco.apiflutterproject.respository.ImageRepository;
 import be.franco.apiflutterproject.respository.SongRepository;
+import be.franco.apiflutterproject.util.ImageUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class SongService {
+    @Autowired
+    private SongRepository repository;
 
     @Autowired
-    private SongRepository songRepository;
+    ImageRepository imageRepository;
 
-    public String uploadSong(MultipartFile song) throws IOException {
-        String uploadDir = "src/main/resources/static/songs/";
+    public Long uploadSong(MultipartFile file) throws IOException {
+        String originalFileName = file.getOriginalFilename();
+        String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
 
-        File uploadDirectory = new File(uploadDir);
-        if (!uploadDirectory.exists()) {
-            uploadDirectory.mkdir();
+        String randomName = UUID.randomUUID().toString() + extension;
+
+        Song songData = repository.save(Song.builder()
+                .name(randomName)
+                .type(file.getContentType())
+                .songData(ImageUtils.compressImage(file.getBytes())).build());
+        if (songData != null) {
+            return songData.getId();
         }
+        return null;
+    }
 
-        Path uploadPath = Path.of(uploadDir + song.getOriginalFilename());
-
-        // Vérifiez si le fichier existe déjà
-        if (Files.exists(uploadPath)) {
-            System.out.println("La chanson existe déjà");
-            return null;
+    public byte[] downloadSong(String fileName){
+        Optional<Song> dbSongData = repository.findByName(fileName);
+        if (dbSongData.isPresent()) {
+            byte[] songs = ImageUtils.decompressImage(dbSongData.get().getSongData());
+            return songs;
+        } else {
+            throw new NoSuchElementException("Aucune chanson trouvée avec le nom de fichier : " + fileName);
         }
-
-        song.transferTo(uploadPath);
-
-        Song songOk = new Song();
-        songOk.setPath(song.getOriginalFilename());
-
-        Song savedSong = songRepository.save(songOk);
-        return savedSong.getPath();
     }
 
 
-    public Song getSong(String path) {
-        return songRepository.findByPath(path);
+
+    // associate song with photo
+    public void associateSongWithPhoto(Long songId, Long photoId){
+        Optional<Song> dbSongData = repository.findById(songId);
+        Optional<Photo> dbPhotoData = imageRepository.findById(photoId);
+        dbPhotoData.get().setSong(dbSongData.get());
+        imageRepository.save(dbPhotoData.get());
     }
 
-    public Song[] getAllSongs() {
-        return songRepository.findAll().toArray(new Song[0]);
-    }
-
-    public void deleteSong(String path) {
-        Song song = songRepository.findByPath(path);
-        File file = new File("src/main/resources/static/songs/" + song.getPath());
-        file.delete();
-        songRepository.delete(song);
-    }
-
-    public void deleteSongById(Long id) {
-        Song song = songRepository.findById(id).get();
-        File file = new File("src/main/resources/static/songs/" + song.getPath());
-        file.delete();
-        songRepository.delete(song);
+    // delete
+    public void deleteSong(Long id){
+        repository.deleteById(id);
     }
 }
