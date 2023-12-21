@@ -41,7 +41,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future uploadImage() async {
-    var uri = Uri.parse('http://192.168.0.16:8080/image');
+    var uri = Uri.parse('https://molten-guide-408810.ew.r.appspot.com/image');
     var request = http.MultipartRequest('POST', uri);
 
     var multipartFile = await http.MultipartFile.fromPath(
@@ -61,12 +61,12 @@ class _HomePageState extends State<HomePage> {
   Future<List<Photo>> fetchPhotos() async {
     List<Photo> photos = [];
     final response =
-    await http.get(Uri.parse('http://192.168.0.16:8080/image/search/all'));
+    await http.get(Uri.parse('https://molten-guide-408810.ew.r.appspot.com/image/search/all'));
     if (response.statusCode == 200) {
       var photosJson = json.decode(response.body);
       for (var photoJson in photosJson) {
         // get image with id
-        final response2 = await http.get(Uri.parse('http://192.168.0.16:8080/image/search/${photoJson['id']}'));
+        final response2 = await http.get(Uri.parse('https://molten-guide-408810.ew.r.appspot.com/image/search/${photoJson['id']}'));
 
         Uint8List imageData = response2.bodyBytes;
         photos.add(Photo.fromJson(photoJson, imageData: imageData));
@@ -94,7 +94,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> deletePhoto(int id) async {
-    var uri3 = Uri.parse('http://192.168.0.16:8080/image/delete/$id');
+    var uri3 = Uri.parse('https://molten-guide-408810.ew.r.appspot.com/image/delete/$id');
     var response3 = await http.delete(uri3);
 
     if (response3.statusCode == 200) {
@@ -117,7 +117,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> uploadSong(int photoId) async {
-    var uri = Uri.parse('http://192.168.0.16:8080/storageSong/uploadSong');
+    var uri = Uri.parse('https://molten-guide-408810.ew.r.appspot.com/storageSong/uploadSong');
     var request = http.MultipartRequest('POST', uri);
 
     var multipartFile = await http.MultipartFile.fromPath(
@@ -138,7 +138,7 @@ class _HomePageState extends State<HomePage> {
       }
 
       // associate song with photo
-      var uri2 = Uri.parse('http://192.168.0.16:8080/storageSong/associateSongWithPhoto/$respStr/$photoId');
+      var uri2 = Uri.parse('https://molten-guide-408810.ew.r.appspot.com/storageSong/associateSongWithPhoto/$respStr/$photoId');
       var response2 = await http.post(uri2);
 
       if (response2.statusCode == 200) {
@@ -174,7 +174,7 @@ class _HomePageState extends State<HomePage> {
                           onTap: () {
                             if (snapshot.data![index].getSong != null) {
                               audioUrl = UrlSource(
-                                'http://192.168.0.16:8080/storageSong/downloadSong/${snapshot.data![index].getSong!.getName}');
+                                'https://molten-guide-408810.ew.r.appspot.com/storageSong/downloadSong/${snapshot.data![index].getSong!.getName}');
                               player.play(audioUrl);
                             }
                           },
