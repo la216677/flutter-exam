@@ -1,20 +1,15 @@
 import 'dart:io';
 
-import 'package:examproject2324/views/otherView.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/photo.dart';
 import '../models/song.dart';
-import '../utils/db_helper.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:permission_handler/permission_handler.dart';
-
-
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,9 +19,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<Map<String, dynamic>> _Items = [];
-  bool _isLoading = false;
-
   late PageController _pageController;
   late Future<List<Photo>> _photos;
 
@@ -38,14 +30,12 @@ class _HomePageState extends State<HomePage> {
 
   Future getImage() async {
     final pickedFile =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
+        await ImagePicker().pickImage(source: ImageSource.gallery);
 
     setState(() {
       if (pickedFile != null) {
         _image = File(pickedFile.path);
-      } else {
-        print('No image selected.');
-      }
+      } else {}
     });
   }
 
@@ -65,19 +55,10 @@ class _HomePageState extends State<HomePage> {
     var response = await request.send();
 
     if (response.statusCode == 200) {
-      print('Upload réussi');
-    } else {
-      print('Échec de l\'upload');
-    }
+    } else {}
   }
 
   int currentIndex = 0;
-
-  void _onItemTapped(int index) {
-    setState(() {
-      currentIndex = index;
-    });
-  }
 
   @override
   void initState() {
@@ -104,20 +85,13 @@ class _HomePageState extends State<HomePage> {
     var response3 = await http.delete(uri3);
 
     if (response3.statusCode == 200) {
-      print('Photo supprimée avec succès');
-
       // delete song
       var uri4 = Uri.parse('http://192.168.1.21:8080/song/id/$idSong');
       var response4 = await http.delete(uri4);
 
       if (response4.statusCode == 200) {
-        print('Song supprimée avec succès');
-      } else {
-        print('Échec de la suppression de la song');
-      }
-    } else {
-      print('Échec de la suppression de la photo');
-    }
+      } else {}
+    } else {}
   }
 
   Future<void> getSong() async {
@@ -126,16 +100,13 @@ class _HomePageState extends State<HomePage> {
       status = await Permission.storage.request();
     }
     if (status.isGranted) {
-      final pickedFile = await FilePicker.platform.pickFiles(type: FileType.audio);
+      final pickedFile =
+          await FilePicker.platform.pickFiles(type: FileType.audio);
 
       if (pickedFile != null) {
         _song = File(pickedFile.files.single.path!);
-      } else {
-        print('No song selected.');
-      }
-    } else {
-      print('Storage permission is denied');
-    }
+      } else {}
+    } else {}
   }
 
   Future<void> uploadSong(String photoId) async {
@@ -145,21 +116,19 @@ class _HomePageState extends State<HomePage> {
     var multipartFile = await http.MultipartFile.fromPath(
       'file',
       _song!.path,
-      contentType: MediaType('audio', 'mpeg'), // Changez le type en fonction de votre fichier
+      contentType: MediaType(
+          'audio', 'mpeg'), // Changez le type en fonction de votre fichier
     );
 
     request.files.add(multipartFile);
 
     var uploadResponse = await request.send();
 
-
     if (uploadResponse.statusCode == 200) {
       final respStr = await uploadResponse.stream.bytesToString();
-      if(respStr == "") {
-        print('No song  because it exists');
+      if (respStr == "") {
         return;
       }
-      print('Upload réussi');
       // Obtenez l'objet Song à partir de la réponse
       var uri2 = Uri.parse('http://192.168.1.21:8080/song/$respStr');
       var response = await http.get(uri2);
@@ -186,17 +155,9 @@ class _HomePageState extends State<HomePage> {
       );
 
       if (response3.statusCode == 200) {
-        print('Song updated successfully');
-      } else {
-        print('Failed to update song');
-      }
-    } else {
-      print('Échec de l\'upload');
-    }
+      } else {}
+    } else {}
   }
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -225,10 +186,8 @@ class _HomePageState extends State<HomePage> {
                         child: InkWell(
                           onTap: () {
                             audioUrl = UrlSource(
-                                'http://192.168.1.21:8080/songs/${snapshot
-                                    .data![index].song!.path}');
+                                'http://192.168.1.21:8080/songs/${snapshot.data![index].song!.path}');
                             player.play(audioUrl);
-                            print('Card clicked');
                           },
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(
@@ -239,7 +198,7 @@ class _HomePageState extends State<HomePage> {
                               maxHeight: 300,
                               // Vous pouvez ajuster la valeur pour obtenir la hauteur maximale souhaitée
                               maxWidth:
-                              400, // Vous pouvez ajuster la valeur pour obtenir la largeur maximale souhaitée
+                                  400, // Vous pouvez ajuster la valeur pour obtenir la largeur maximale souhaitée
                             ),
                             child: Card(
                               shape: RoundedRectangleBorder(
@@ -254,8 +213,7 @@ class _HomePageState extends State<HomePage> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: <Widget>[
                                     Image.network(
-                                      'http://192.168.1.21:8080/photos/${snapshot
-                                          .data![index].path}',
+                                      'http://192.168.1.21:8080/photos/${snapshot.data![index].path}',
                                       height: 200,
                                       width: 200,
                                     ),
@@ -279,89 +237,95 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             // formulaire pour ajouter un instrument
-        FutureBuilder<List<Photo>>(
-          future: _photos,
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return Column(
-                children: <Widget>[
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.all(30),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.blueAccent),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  spreadRadius: 5,
-                                  blurRadius: 7,
-                                  offset: Offset(0, 3),
+            FutureBuilder<List<Photo>>(
+              future: _photos,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return Column(
+                    children: <Widget>[
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: snapshot.data!.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.all(30),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.blueAccent),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.5),
+                                      spreadRadius: 5,
+                                      blurRadius: 7,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: Row(
-                              children: <Widget>[
-                                Image.network(
-                                  'http://192.168.1.21:8080/photos/${snapshot.data![index].path}',
-                                  height: 100,
-                                  width: 100,
+                                child: Row(
+                                  children: <Widget>[
+                                    Image.network(
+                                      'http://192.168.1.21:8080/photos/${snapshot.data![index].path}',
+                                      height: 100,
+                                      width: 100,
+                                    ),
+                                    const Spacer(),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete),
+                                      onPressed: () async {
+                                        await deletePhoto(
+                                            snapshot.data![index].path);
+                                        setState(() {
+                                          _photos =
+                                              fetchPhotos(); // Mettez à jour la liste des photos
+                                        });
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.music_note),
+                                      onPressed: () async {
+                                        await getSong();
+                                        await uploadSong(snapshot
+                                            .data![index].id
+                                            .toString()); // Passez l'ID de la photo ici
+                                        setState(() {
+                                          _photos =
+                                              fetchPhotos(); // Mettez à jour la liste des photos
+                                        });
+                                      },
+                                    ),
+                                  ],
                                 ),
-                                Spacer(),
-                                IconButton(
-                                  icon: Icon(Icons.delete),
-                                  onPressed: () async {
-                                    await deletePhoto(snapshot.data![index].path);
-                                    setState(() {
-                                      _photos = fetchPhotos(); // Mettez à jour la liste des photos
-                                    });
-                                  },
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.music_note),
-                                  onPressed: () async {
-                                    await getSong();
-                                    await uploadSong(snapshot.data![index].id.toString()); // Passez l'ID de la photo ici
-                                    setState(() {
-                                      _photos = fetchPhotos(); // Mettez à jour la liste des photos
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(30),
-                    child: FloatingActionButton(
-                      onPressed: () async {
-                        await getImage();
-                        await uploadImage();
-                        setState(() {
-                          _photos = fetchPhotos(); // Mettez à jour la liste des photos
-                        });
-                      },
-                      tooltip: 'Pick Image',
-                      child: Icon(Icons.add_a_photo),
-                    ),
-                  ),
-                ],
-              );
-            } else if (snapshot.hasError) {
-              return Text("${snapshot.error}");
-            }
-            return const CircularProgressIndicator();
-          },
-        )
-        ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(30),
+                        child: FloatingActionButton(
+                          onPressed: () async {
+                            await getImage();
+                            await uploadImage();
+                            setState(() {
+                              _photos =
+                                  fetchPhotos(); // Mettez à jour la liste des photos
+                            });
+                          },
+                          tooltip: 'Pick Image',
+                          child: const Icon(Icons.add_a_photo),
+                        ),
+                      ),
+                    ],
+                  );
+                } else if (snapshot.hasError) {
+                  return Text("${snapshot.error}");
+                }
+                return const CircularProgressIndicator();
+              },
+            )
+          ],
         ),
       ),
       bottomNavigationBar: NavigationBar(
@@ -383,132 +347,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _refreshItems() async {
-    final items = await SQLHelper.getItems();
-    setState(() {
-      _Items = items;
-      _isLoading = false;
-    });
+    setState(() {});
   }
 
   Future<List<Photo>> fetchPhotos() async {
     final response =
-    await http.get(Uri.parse('http://192.168.1.21:8080/photo/all'));
+        await http.get(Uri.parse('http://192.168.1.21:8080/photo/all'));
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
       return jsonResponse.map((photo) => Photo.fromJson(photo)).toList();
     } else {
       throw Exception('Erreur lors du chargement des photos');
     }
-  }
-
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-
-  Future<void> _addNewItem() async {
-    if (_titleController.text.isEmpty) {
-      return;
-    }
-    await SQLHelper.createItem(
-        _titleController.text, _descriptionController.text);
-    _refreshItems();
-  }
-
-  Future<void> _updateItem(int id) async {
-    if (_titleController.text.isEmpty) {
-      return;
-    }
-    await SQLHelper.updateItem(
-        id, _titleController.text, _descriptionController.text);
-    _refreshItems();
-  }
-
-  void _deleteItem(int id) async {
-    await SQLHelper.deleteItem(id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: Colors.red,
-        content: Text('Item deleted'),
-      ),
-    );
-    _refreshItems();
-  }
-
-  void showBottomSheet(int? id) {
-    if (id != null) {
-      final existingItem = _Items.firstWhere((element) => element['id'] == id);
-      _titleController.text = existingItem['title'];
-      _descriptionController.text = existingItem['description'];
-    }
-
-    showModalBottomSheet(
-      elevation: 5,
-      isScrollControlled: true,
-      context: context,
-      builder: (_) =>
-          Container(
-            padding: EdgeInsets.only(
-              top: 30,
-              left: 15,
-              right: 15,
-              bottom: MediaQuery
-                  .of(context)
-                  .viewInsets
-                  .bottom + 50,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                TextField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                    hintText: 'Enter title',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: _image == null
-                      ? Text('No image selected.')
-                      : Image.file(_image!, height: 200, width: 200),
-                ),
-                FloatingActionButton(
-                  onPressed: getImage,
-                  tooltip: 'Pick Image',
-                  child: Icon(Icons.add_a_photo),
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (_image != null) {
-                        await uploadImage();
-                      }
-                      if (id == null) {
-                        await _addNewItem();
-                      } else {
-                        await _updateItem(id);
-                      }
-                      _titleController.clear();
-                      _descriptionController.clear();
-                      Navigator.of(context).pop();
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Text(
-                        id == null ? 'Add' : 'Update',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              ],
-            ),
-          ),
-    );
   }
 }
