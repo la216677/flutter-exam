@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/photo.dart';
-import '../models/song.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:file_picker/file_picker.dart';
@@ -20,14 +19,31 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // --------------------- VARIABLES ---------------------
   late PageController _pageController;
   late Future<List<Photo>> _photos;
-
+  File? _image;
+  File? _song;
   final player = AudioPlayer();
   late Source audioUrl;
 
-  File? _image;
-  File? _song;
+  // --------------------- FONCTIONS ---------------------
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshItems();
+    _photos = fetchPhotos();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // --------------------- IMAGES ---------------------
 
   Future getImage() async {
     final pickedFile =
@@ -57,16 +73,26 @@ class _HomePageState extends State<HomePage> {
     } else {}
   }
 
+  Future<void> deletePhoto(int id) async {
+    var uri3 = Uri.parse(
+        'https://molten-guide-408810.ew.r.appspot.com/image/delete/$id');
+    var response3 = await http.delete(uri3);
+
+    if (response3.statusCode == 200) {
+    } else {}
+  }
+
   int currentIndex = 0;
   Future<List<Photo>> fetchPhotos() async {
     List<Photo> photos = [];
-    final response =
-    await http.get(Uri.parse('https://molten-guide-408810.ew.r.appspot.com/image/search/all'));
+    final response = await http.get(Uri.parse(
+        'https://molten-guide-408810.ew.r.appspot.com/image/search/all'));
     if (response.statusCode == 200) {
       var photosJson = json.decode(response.body);
       for (var photoJson in photosJson) {
         // get image with id
-        final response2 = await http.get(Uri.parse('https://molten-guide-408810.ew.r.appspot.com/image/search/${photoJson['id']}'));
+        final response2 = await http.get(Uri.parse(
+            'https://molten-guide-408810.ew.r.appspot.com/image/search/${photoJson['id']}'));
 
         Uint8List imageData = response2.bodyBytes;
         photos.add(Photo.fromJson(photoJson, imageData: imageData));
@@ -77,29 +103,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshItems();
-    _photos = fetchPhotos();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  Future<void> deletePhoto(int id) async {
-    var uri3 = Uri.parse('https://molten-guide-408810.ew.r.appspot.com/image/delete/$id');
-    var response3 = await http.delete(uri3);
-
-    if (response3.statusCode == 200) {
-    } else {}
-  }
+  // --------------------- SONG ---------------------
 
   Future<void> getSong() async {
     var status = await Permission.storage.status;
@@ -117,34 +121,32 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> uploadSong(int photoId) async {
-    var uri = Uri.parse('https://molten-guide-408810.ew.r.appspot.com/storageSong/uploadSong');
+    var uri = Uri.parse(
+        'https://molten-guide-408810.ew.r.appspot.com/storageSong/uploadSong');
     var request = http.MultipartRequest('POST', uri);
-
     var multipartFile = await http.MultipartFile.fromPath(
       'file',
       _song!.path,
       contentType: MediaType(
           'audio', 'mpeg'), // Changez le type en fonction de votre fichier
     );
-
     request.files.add(multipartFile);
-
     var uploadResponse = await request.send();
-
     if (uploadResponse.statusCode == 200) {
       final respStr = await uploadResponse.stream.bytesToString();
       if (respStr == "") {
         return;
       }
-
       // associate song with photo
-      var uri2 = Uri.parse('https://molten-guide-408810.ew.r.appspot.com/storageSong/associateSongWithPhoto/$respStr/$photoId');
+      var uri2 = Uri.parse(
+          'https://molten-guide-408810.ew.r.appspot.com/storageSong/associateSongWithPhoto/$respStr/$photoId');
       var response2 = await http.post(uri2);
-
       if (response2.statusCode == 200) {
       } else {}
     } else {}
   }
+
+  // --------------------- WIDGETS ---------------------
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +176,7 @@ class _HomePageState extends State<HomePage> {
                           onTap: () {
                             if (snapshot.data![index].getSong != null) {
                               audioUrl = UrlSource(
-                                'https://molten-guide-408810.ew.r.appspot.com/storageSong/downloadSong/${snapshot.data![index].getSong!.getName}');
+                                  'https://molten-guide-408810.ew.r.appspot.com/storageSong/downloadSong/${snapshot.data![index].getSong!.getName}');
                               player.play(audioUrl);
                             }
                           },
@@ -201,7 +203,11 @@ class _HomePageState extends State<HomePage> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: <Widget>[
-                                    Image(image: MemoryImage(snapshot.data![index].getImageData), height: 200, width: 200),
+                                    Image(
+                                        image: MemoryImage(
+                                            snapshot.data![index].getImageData),
+                                        height: 200,
+                                        width: 200),
                                   ],
                                 ),
                               ),
@@ -250,12 +256,17 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 child: Row(
                                   children: <Widget>[
-                                    Image(image: MemoryImage(snapshot.data![index].getImageData), height: 100, width: 100),
+                                    Image(
+                                        image: MemoryImage(
+                                            snapshot.data![index].getImageData),
+                                        height: 100,
+                                        width: 100),
                                     const Spacer(),
                                     IconButton(
                                       icon: const Icon(Icons.delete),
                                       onPressed: () async {
-                                        await deletePhoto(snapshot.data![index].getId);// Passez l'ID de la photo ici
+                                        await deletePhoto(snapshot.data![index]
+                                            .getId); // Passez l'ID de la photo ici
                                         setState(() {
                                           _photos =
                                               fetchPhotos(); // Mettez à jour la liste des photos
@@ -266,8 +277,8 @@ class _HomePageState extends State<HomePage> {
                                       icon: const Icon(Icons.music_note),
                                       onPressed: () async {
                                         await getSong();
-                                        await uploadSong(snapshot
-                                            .data![index].getId); // Passez l'ID de la photo ici
+                                        await uploadSong(snapshot.data![index]
+                                            .getId); // Passez l'ID de la photo ici
                                         setState(() {
                                           _photos =
                                               fetchPhotos(); // Mettez à jour la liste des photos
@@ -304,7 +315,6 @@ class _HomePageState extends State<HomePage> {
                 return const CircularProgressIndicator();
               },
             ),
-
           ],
         ),
       ),
@@ -329,7 +339,4 @@ class _HomePageState extends State<HomePage> {
   void _refreshItems() async {
     setState(() {});
   }
-
 }
-
-
